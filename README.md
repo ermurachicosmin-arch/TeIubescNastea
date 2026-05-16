@@ -1,4 +1,4 @@
-[nastea_heart_mobile.html](https://github.com/user-attachments/files/27852702/nastea_heart_mobile.html)
+[nastea_heart_mobile.html](https://github.com/user-attachments/files/27852742/nastea_heart_mobile.html)
 <!DOCTYPE html>
 <html lang="ro">
 <head>
