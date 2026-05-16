@@ -1,27 +1,22 @@
-[te_iubesc_heart_mobile.html](https://github.com/user-attachments/files/27852614/te_iubesc_heart_mobile.html)
+[nastea_heart_mobile.html](https://github.com/user-attachments/files/27852702/nastea_heart_mobile.html)
 <!DOCTYPE html>
 <html lang="ro">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Te Iubesc</title>
+<title>Nastea ❤️</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
-    background: #08000e;
+    background: #080010;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    height: 100%;
-    min-height: 100vh;
+    height: 100vh;
     overflow: hidden;
   }
-  canvas {
-    display: block;
-    max-width: 100vw;
-    max-height: 100vh;
-  }
+  canvas { display: block; }
 </style>
 </head>
 <body>
@@ -30,179 +25,134 @@
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 
-// Responsive sizing
-const size = Math.min(window.innerWidth, window.innerHeight, 520);
-const W = size, H = size;
-canvas.width = W;
-canvas.height = H;
+// Responsive: se potriveste pe orice telefon
+const size = Math.min(window.innerWidth, window.innerHeight) * 0.96;
+canvas.width = size;
+canvas.height = size;
 
+const W = size, H = size;
+const cx = W / 2;
+const cy = H / 2 + size * 0.02;
+
+const SCALE = size * 0.031;
+const FONT_SIZE = Math.round(size * 0.042);
+const NAME_FONT = Math.round(size * 0.13);
+const TOTAL_CHARS = 85;
 const text = "te iubesc ";
-const TOTAL_CHARS = 80;
-const FONT_SIZE = Math.max(14, size * 0.034);
-const SCALE = size * 0.032;
 
 function heartX(t) { return 16 * Math.pow(Math.sin(t), 3); }
 function heartY(t) { return -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)); }
 
-// Build evenly spaced points along heart
-const steps = 2000;
-const rawPts = [];
-for (let i = 0; i <= steps; i++) {
+// Build evenly spaced points along heart path
+const steps = 3000;
+const raw = [];
+for (let i = 0; i < steps; i++) {
   const t = (i / steps) * Math.PI * 2;
-  rawPts.push({ x: heartX(t), y: heartY(t) });
+  raw.push({ x: heartX(t), y: heartY(t) });
 }
 
-const totalLen = rawPts.reduce((acc, p, i) => {
-  if (i === 0) return 0;
-  return acc + Math.hypot(p.x - rawPts[i-1].x, p.y - rawPts[i-1].y);
-}, 0);
+let totalLen = 0;
+for (let i = 1; i < raw.length; i++)
+  totalLen += Math.hypot(raw[i].x - raw[i-1].x, raw[i].y - raw[i-1].y);
 
-const pts = [];
 const sp = totalLen / TOTAL_CHARS;
+const pts = [];
 let acc = 0, pi = 0;
 for (let i = 0; i < TOTAL_CHARS; i++) {
   const target = i * sp;
-  while (pi < rawPts.length - 1 && acc < target) {
-    acc += Math.hypot(rawPts[pi+1].x - rawPts[pi].x, rawPts[pi+1].y - rawPts[pi].y);
+  while (pi < raw.length - 1 && acc < target) {
+    acc += Math.hypot(raw[pi+1].x - raw[pi].x, raw[pi+1].y - raw[pi].y);
     pi++;
   }
-  pts.push({ ...rawPts[pi] });
+  pts.push({ ...raw[Math.min(pi, raw.length - 1)] });
 }
-
-const cx = W / 2;
-const cy = H / 2 + size * 0.02;
 
 let frame = 0;
 
-function buildHeart(sc) {
-  const p = new Path2D();
-  for (let i = 0; i <= 500; i++) {
-    const t = (i / 500) * Math.PI * 2;
-    const x = cx + heartX(t) * sc;
-    const y = cy + heartY(t) * sc;
-    i === 0 ? p.moveTo(x, y) : p.lineTo(x, y);
-  }
-  p.closePath();
-  return p;
-}
-
-function buildInnerHeart(sc) {
-  const insetFactor = 0.74;
-  const p = new Path2D();
-  for (let i = 0; i <= 500; i++) {
-    const t = (i / 500) * Math.PI * 2;
-    const x = cx + heartX(t) * sc * insetFactor;
-    const y = cy + heartY(t) * sc * insetFactor;
-    i === 0 ? p.moveTo(x, y) : p.lineTo(x, y);
-  }
-  p.closePath();
-  return p;
-}
-
 function draw() {
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#08000e';
+  ctx.fillStyle = '#080010';
   ctx.fillRect(0, 0, W, H);
 
-  const pulse = 0.96 + 0.04 * Math.sin(frame * 0.03);
-  const glowPulse = 0.5 + 0.5 * Math.abs(Math.sin(frame * 0.03));
+  const pulse = 0.97 + 0.03 * Math.sin(frame * 0.025);
+  const glowPulse = 0.5 + 0.5 * Math.abs(Math.sin(frame * 0.025));
   const sc = SCALE * pulse;
 
-  const outerPath = buildHeart(sc);
-  const innerPath = buildInnerHeart(sc);
+  const offset = (frame * 0.14) % TOTAL_CHARS;
+  const iOff = Math.floor(offset);
+  const frac = offset - iOff;
 
-  // Band clip: outer minus inner
-  const bandPath = new Path2D();
-  bandPath.addPath(outerPath);
-  bandPath.addPath(innerPath);
-
-  // Fill interior black
-  ctx.save();
-  ctx.fillStyle = '#08000e';
-  ctx.fill(innerPath);
-  ctx.restore();
-
-  // Clip to band and draw letters
-  ctx.save();
-  ctx.clip(bandPath, 'evenodd');
-
-  // Band background slightly darker
-  ctx.fillStyle = '#100010';
-  ctx.fillRect(0, 0, W, H);
-
-  // SLOW offset: frame * 0.18 instead of 0.5
-  const offset = (frame * 0.18) % TOTAL_CHARS;
-
-  ctx.font = `900 ${FONT_SIZE}px Georgia, 'Times New Roman', serif`;
+  // --- Literele conturului ---
+  ctx.font = `900 ${FONT_SIZE}px Georgia, serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
   for (let i = 0; i < TOTAL_CHARS; i++) {
-    const idx = (i + Math.floor(offset)) % TOTAL_CHARS;
-    const frac = offset - Math.floor(offset);
-    const idxNext = (idx + 1) % TOTAL_CHARS;
-
-    const px = pts[idx].x + (pts[idxNext].x - pts[idx].x) * frac;
-    const py = pts[idx].y + (pts[idxNext].y - pts[idx].y) * frac;
-
-    const screenX = cx + px * sc;
-    const screenY = cy + py * sc;
+    const a = (i + iOff) % TOTAL_CHARS;
+    const b = (a + 1) % TOTAL_CHARS;
+    const px = pts[a].x + (pts[b].x - pts[a].x) * frac;
+    const py = pts[a].y + (pts[b].y - pts[a].y) * frac;
+    const sx = cx + px * sc;
+    const sy = cy + py * sc;
 
     const ch = text[i % text.length];
-    const posInLoop = i / TOTAL_CHARS;
-
-    // Warm pinks and reds
-    const hue = 335 + 20 * Math.sin(posInLoop * Math.PI * 2 + frame * 0.015);
-    const light = 65 + 12 * Math.sin(posInLoop * Math.PI * 4 + frame * 0.02);
+    const t = i / TOTAL_CHARS;
+    const hue = 330 + 28 * Math.sin(t * Math.PI * 3 + frame * 0.012);
+    const light = 60 + 14 * Math.sin(t * Math.PI * 5 + frame * 0.018);
 
     ctx.save();
-    ctx.translate(screenX, screenY);
-
-    // Glow
-    ctx.shadowColor = `hsla(${hue}, 100%, 75%, 0.8)`;
-    ctx.shadowBlur = 10;
+    ctx.translate(sx, sy);
+    ctx.shadowColor = `hsl(${hue}, 100%, 70%)`;
+    ctx.shadowBlur = 16;
     ctx.fillStyle = `hsl(${hue}, 95%, ${light}%)`;
     ctx.fillText(ch, 0, 0);
-
-    // Second pass for extra brightness
-    ctx.shadowBlur = 3;
-    ctx.fillStyle = `hsla(${hue}, 100%, 88%, 0.5)`;
+    ctx.shadowBlur = 5;
+    ctx.fillStyle = `hsla(${hue}, 80%, 92%, 0.5)`;
     ctx.fillText(ch, 0, 0);
-
     ctx.restore();
   }
 
+  // --- Numele "Nastea" în centru ---
+  const namePulse = 0.93 + 0.07 * Math.sin(frame * 0.04);
+  const nameGlow = 0.65 + 0.35 * Math.abs(Math.sin(frame * 0.04));
+  const nfs = Math.round(NAME_FONT * namePulse);
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${nfs}px Georgia, serif`;
+
+  // Glow exterior
+  ctx.shadowColor = `rgba(255, 100, 160, ${nameGlow})`;
+  ctx.shadowBlur = 35;
+  ctx.fillStyle = `hsl(340, 100%, 76%)`;
+  ctx.fillText('Nastea', cx, cy - size * 0.01);
+
+  // Strat luminos interior
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = `hsla(345, 90%, 90%, 0.65)`;
+  ctx.fillText('Nastea', cx, cy - size * 0.01);
+
   ctx.restore();
 
-  // Re-fill interior black (over any bleed)
-  ctx.save();
-  ctx.fillStyle = '#08000e';
-  ctx.fill(innerPath);
-  ctx.restore();
-
-  // Outer heart glow edge
-  ctx.save();
-  ctx.shadowColor = `rgba(230, 30, 90, ${0.5 + 0.4 * glowPulse})`;
-  ctx.shadowBlur = 18;
-  ctx.strokeStyle = `rgba(210, 40, 90, ${0.3 + 0.25 * glowPulse})`;
-  ctx.lineWidth = 1.5;
-  ctx.stroke(outerPath);
-  ctx.restore();
-
-  // Inner heart glow edge
-  ctx.save();
-  ctx.shadowColor = `rgba(200, 30, 80, ${0.35 * glowPulse})`;
-  ctx.shadowBlur = 10;
-  ctx.strokeStyle = `rgba(180, 30, 70, ${0.25 + 0.2 * glowPulse})`;
-  ctx.lineWidth = 1;
-  ctx.stroke(innerPath);
-  ctx.restore();
+  // Glow ambient
+  const g = ctx.createRadialGradient(cx, cy - size*0.04, size*0.04, cx, cy, size*0.46);
+  g.addColorStop(0, `rgba(200, 20, 80, ${0.08 * glowPulse})`);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
 
   frame++;
   requestAnimationFrame(draw);
 }
 
 draw();
+
+// Resize pe rotire ecran
+window.addEventListener('resize', () => {
+  const s = Math.min(window.innerWidth, window.innerHeight) * 0.96;
+  canvas.width = s;
+  canvas.height = s;
+});
 </script>
 </body>
 </html>
