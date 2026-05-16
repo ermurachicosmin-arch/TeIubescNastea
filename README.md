@@ -1,19 +1,27 @@
-[te_iubesc_heart_horizontal.html](https://github.com/user-attachments/files/27852329/te_iubesc_heart_horizontal.html)
+[te_iubesc_heart_mobile.html](https://github.com/user-attachments/files/27852614/te_iubesc_heart_mobile.html)
 <!DOCTYPE html>
-<html>
+<html lang="ro">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Te Iubesc</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: #0a0005;
+  html, body {
+    background: #08000e;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 100%;
+    height: 100%;
     min-height: 100vh;
     overflow: hidden;
   }
-  canvas { display: block; }
+  canvas {
+    display: block;
+    max-width: 100vw;
+    max-height: 100vh;
+  }
 </style>
 </head>
 <body>
@@ -21,116 +29,174 @@
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
-const W = 580, H = 540;
+
+// Responsive sizing
+const size = Math.min(window.innerWidth, window.innerHeight, 520);
+const W = size, H = size;
 canvas.width = W;
 canvas.height = H;
 
 const text = "te iubesc ";
-const TOTAL_CHARS = 120;
+const TOTAL_CHARS = 80;
+const FONT_SIZE = Math.max(14, size * 0.034);
+const SCALE = size * 0.032;
 
 function heartX(t) { return 16 * Math.pow(Math.sin(t), 3); }
 function heartY(t) { return -(13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t)); }
 
-const steps = 1200;
-const points = [];
+// Build evenly spaced points along heart
+const steps = 2000;
+const rawPts = [];
 for (let i = 0; i <= steps; i++) {
   const t = (i / steps) * Math.PI * 2;
-  points.push({ x: heartX(t), y: heartY(t) });
+  rawPts.push({ x: heartX(t), y: heartY(t) });
 }
 
-const totalLen = points.reduce((acc, p, i) => {
+const totalLen = rawPts.reduce((acc, p, i) => {
   if (i === 0) return 0;
-  return acc + Math.hypot(p.x - points[i-1].x, p.y - points[i-1].y);
+  return acc + Math.hypot(p.x - rawPts[i-1].x, p.y - rawPts[i-1].y);
 }, 0);
 
-const evenPoints = [];
-const spacing = totalLen / TOTAL_CHARS;
-let accumulated = 0, pIdx = 0;
+const pts = [];
+const sp = totalLen / TOTAL_CHARS;
+let acc = 0, pi = 0;
 for (let i = 0; i < TOTAL_CHARS; i++) {
-  const target = i * spacing;
-  while (pIdx < points.length - 1 && accumulated < target) {
-    accumulated += Math.hypot(points[pIdx+1].x - points[pIdx].x, points[pIdx+1].y - points[pIdx].y);
-    pIdx++;
+  const target = i * sp;
+  while (pi < rawPts.length - 1 && acc < target) {
+    acc += Math.hypot(rawPts[pi+1].x - rawPts[pi].x, rawPts[pi+1].y - rawPts[pi].y);
+    pi++;
   }
-  evenPoints.push({ ...points[pIdx] });
+  pts.push({ ...rawPts[pi] });
 }
 
-const cx = W / 2, cy = H / 2 - 10;
-const scale = 17;
+const cx = W / 2;
+const cy = H / 2 + size * 0.02;
+
 let frame = 0;
+
+function buildHeart(sc) {
+  const p = new Path2D();
+  for (let i = 0; i <= 500; i++) {
+    const t = (i / 500) * Math.PI * 2;
+    const x = cx + heartX(t) * sc;
+    const y = cy + heartY(t) * sc;
+    i === 0 ? p.moveTo(x, y) : p.lineTo(x, y);
+  }
+  p.closePath();
+  return p;
+}
+
+function buildInnerHeart(sc) {
+  const insetFactor = 0.74;
+  const p = new Path2D();
+  for (let i = 0; i <= 500; i++) {
+    const t = (i / 500) * Math.PI * 2;
+    const x = cx + heartX(t) * sc * insetFactor;
+    const y = cy + heartY(t) * sc * insetFactor;
+    i === 0 ? p.moveTo(x, y) : p.lineTo(x, y);
+  }
+  p.closePath();
+  return p;
+}
 
 function draw() {
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = '#0a0005';
+  ctx.fillStyle = '#08000e';
   ctx.fillRect(0, 0, W, H);
 
-  const pulse = 0.93 + 0.07 * Math.sin(frame * 0.04);
-  const glowPulse = 0.5 + 0.5 * Math.abs(Math.sin(frame * 0.04));
-  const sc = scale * pulse;
+  const pulse = 0.96 + 0.04 * Math.sin(frame * 0.03);
+  const glowPulse = 0.5 + 0.5 * Math.abs(Math.sin(frame * 0.03));
+  const sc = SCALE * pulse;
 
-  // faint heart fill glow
+  const outerPath = buildHeart(sc);
+  const innerPath = buildInnerHeart(sc);
+
+  // Band clip: outer minus inner
+  const bandPath = new Path2D();
+  bandPath.addPath(outerPath);
+  bandPath.addPath(innerPath);
+
+  // Fill interior black
   ctx.save();
-  ctx.translate(cx, cy);
-  ctx.scale(sc, sc);
-  const hp = new Path2D();
-  for (let i = 0; i <= 300; i++) {
-    const t = (i / 300) * Math.PI * 2;
-    i === 0 ? hp.moveTo(heartX(t), heartY(t)) : hp.lineTo(heartX(t), heartY(t));
-  }
-  hp.closePath();
-  ctx.shadowColor = `rgba(220,40,80,${glowPulse * 0.35})`;
-  ctx.shadowBlur = 40;
-  ctx.fillStyle = 'rgba(180,20,60,0.06)';
-  ctx.fill(hp);
+  ctx.fillStyle = '#08000e';
+  ctx.fill(innerPath);
   ctx.restore();
 
-  const offset = (frame * 0.5) % TOTAL_CHARS;
+  // Clip to band and draw letters
+  ctx.save();
+  ctx.clip(bandPath, 'evenodd');
+
+  // Band background slightly darker
+  ctx.fillStyle = '#100010';
+  ctx.fillRect(0, 0, W, H);
+
+  // SLOW offset: frame * 0.18 instead of 0.5
+  const offset = (frame * 0.18) % TOTAL_CHARS;
+
+  ctx.font = `900 ${FONT_SIZE}px Georgia, 'Times New Roman', serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
 
   for (let i = 0; i < TOTAL_CHARS; i++) {
     const idx = (i + Math.floor(offset)) % TOTAL_CHARS;
     const frac = offset - Math.floor(offset);
     const idxNext = (idx + 1) % TOTAL_CHARS;
 
-    const px = evenPoints[idx].x + (evenPoints[idxNext].x - evenPoints[idx].x) * frac;
-    const py = evenPoints[idx].y + (evenPoints[idxNext].y - evenPoints[idx].y) * frac;
+    const px = pts[idx].x + (pts[idxNext].x - pts[idx].x) * frac;
+    const py = pts[idx].y + (pts[idxNext].y - pts[idx].y) * frac;
 
     const screenX = cx + px * sc;
     const screenY = cy + py * sc;
 
     const ch = text[i % text.length];
     const posInLoop = i / TOTAL_CHARS;
-    const hue = 340 + 25 * Math.sin(posInLoop * Math.PI * 4 + frame * 0.025);
-    const sat = 85 + 15 * Math.sin(posInLoop * Math.PI * 2);
-    const light = 62 + 18 * Math.sin(posInLoop * Math.PI * 3 + frame * 0.03);
-    const alpha = 0.85 + 0.15 * Math.sin(posInLoop * Math.PI * 5 + frame * 0.04);
+
+    // Warm pinks and reds
+    const hue = 335 + 20 * Math.sin(posInLoop * Math.PI * 2 + frame * 0.015);
+    const light = 65 + 12 * Math.sin(posInLoop * Math.PI * 4 + frame * 0.02);
 
     ctx.save();
     ctx.translate(screenX, screenY);
-    // NO rotation — litere orizontale
 
-    const fontSize = 13;
-    ctx.font = `700 ${fontSize}px Georgia, serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    ctx.shadowColor = `hsla(${hue}, 90%, 70%, 0.7)`;
-    ctx.shadowBlur = 8;
-    ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
+    // Glow
+    ctx.shadowColor = `hsla(${hue}, 100%, 75%, 0.8)`;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = `hsl(${hue}, 95%, ${light}%)`;
     ctx.fillText(ch, 0, 0);
 
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light + 10}%, ${alpha * 0.5})`;
+    // Second pass for extra brightness
+    ctx.shadowBlur = 3;
+    ctx.fillStyle = `hsla(${hue}, 100%, 88%, 0.5)`;
     ctx.fillText(ch, 0, 0);
 
     ctx.restore();
   }
 
-  // center glow
-  const gradient = ctx.createRadialGradient(cx, cy - 20, 20, cx, cy - 20, 240);
-  gradient.addColorStop(0, `rgba(220,20,80,${0.05 * glowPulse})`);
-  gradient.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+
+  // Re-fill interior black (over any bleed)
+  ctx.save();
+  ctx.fillStyle = '#08000e';
+  ctx.fill(innerPath);
+  ctx.restore();
+
+  // Outer heart glow edge
+  ctx.save();
+  ctx.shadowColor = `rgba(230, 30, 90, ${0.5 + 0.4 * glowPulse})`;
+  ctx.shadowBlur = 18;
+  ctx.strokeStyle = `rgba(210, 40, 90, ${0.3 + 0.25 * glowPulse})`;
+  ctx.lineWidth = 1.5;
+  ctx.stroke(outerPath);
+  ctx.restore();
+
+  // Inner heart glow edge
+  ctx.save();
+  ctx.shadowColor = `rgba(200, 30, 80, ${0.35 * glowPulse})`;
+  ctx.shadowBlur = 10;
+  ctx.strokeStyle = `rgba(180, 30, 70, ${0.25 + 0.2 * glowPulse})`;
+  ctx.lineWidth = 1;
+  ctx.stroke(innerPath);
+  ctx.restore();
 
   frame++;
   requestAnimationFrame(draw);
